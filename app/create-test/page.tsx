@@ -9,6 +9,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Slider } from "@/components/ui/slider"
 import { Badge } from "@/components/ui/badge"
+import { Switch } from "@/components/ui/switch"
 import {
   ArrowLeft,
   Wand2,
@@ -213,6 +214,12 @@ export default function CreateTest() {
     duration: [60],
     difficulty: "medium",
     passingScore: 70,
+    webcamRequired: true,
+    fullScreenRequired: true,
+    tabSwitchDetection: true,
+    copyPasteDisabled: true,
+    autoSubmit: true,
+    maxTabSwitches: 3,
   })
 
   const [customSkill, setCustomSkill] = useState("")
@@ -228,7 +235,27 @@ export default function CreateTest() {
       const role = testData.targetRole || "professional"
       const goal = testData.testGoal || "assess technical capabilities"
 
+      const totalQuestions =
+        testData.mcqCount[0] + testData.subjectiveCount[0] + testData.codingCount[0] + testData.problemSolvingCount[0]
+      const totalMarks =
+        testData.mcqCount[0] * testData.mcqMarks +
+        testData.subjectiveCount[0] * testData.subjectiveMarks +
+        testData.codingCount[0] * testData.codingMarks +
+        testData.problemSolvingCount[0] * testData.problemSolvingMarks
+
       const prompt = `Create a comprehensive ${testData.difficulty} difficulty assessment for a ${role} position. The test should ${goal} and focus on evaluating the following key skills: ${skills}. 
+
+Test Configuration:
+- Total Questions: ${totalQuestions}
+- Total Marks: ${totalMarks}
+- Duration: ${testData.duration[0]} minutes
+- Passing Score: ${testData.passingScore}%
+
+Question Distribution:
+- Multiple Choice Questions: ${testData.mcqCount[0]} questions (${testData.mcqMarks} marks each)
+- Coding Questions: ${testData.codingCount[0]} questions (${testData.codingMarks} marks each)
+- Subjective Questions: ${testData.subjectiveCount[0]} questions (${testData.subjectiveMarks} marks each)
+- Problem Solving Questions: ${testData.problemSolvingCount[0]} questions (${testData.problemSolvingMarks} marks each)
 
 The assessment should include practical scenarios and real-world applications relevant to ${role} responsibilities. Questions should test both theoretical knowledge and practical implementation abilities.
 
@@ -236,10 +263,11 @@ Target audience: ${testData.targetRole ? roleTemplates[testData.targetRole as ke
 
 Please ensure questions are:
 - Industry-relevant and up-to-date
-- Progressively challenging
+- Progressively challenging based on marks allocation
 - Focused on practical application
 - Suitable for ${testData.difficulty} difficulty level
-- Aligned with current industry standards and best practices`
+- Aligned with current industry standards and best practices
+- Appropriately weighted according to the marks distribution`
 
       setTestData((prev) => ({ ...prev, prompt }))
       setGeneratingPrompt(false)
@@ -523,62 +551,13 @@ Please ensure questions are:
                 </CardContent>
               </Card>
 
-              {/* AI Prompt Generation */}
-              <Card className="border-0 shadow-sm">
-                <CardHeader>
-                  <CardTitle className="font-bold flex items-center gap-3 text-xl">
-                    <div className="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center">
-                      <Wand2 className="w-6 h-6 text-purple-600" />
-                    </div>
-                    AI Question Generation Prompt
-                  </CardTitle>
-                  <CardDescription className="text-base">
-                    Generate or customize the AI prompt for intelligent question creation
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                  <div className="flex gap-3">
-                    <Button
-                      onClick={generatePrompt}
-                      className="bg-[#4D31EC] hover:bg-[#3D21DC] text-white font-semibold px-6"
-                      disabled={!testData.title || testData.selectedSkills.length === 0 || generatingPrompt}
-                    >
-                      {generatingPrompt ? (
-                        <>
-                          <div className="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full mr-2"></div>
-                          Generating...
-                        </>
-                      ) : (
-                        <>
-                          <Sparkles className="w-4 h-4 mr-2" />
-                          Generate AI Prompt
-                        </>
-                      )}
-                    </Button>
-                  </div>
-
-                  <div>
-                    <Label htmlFor="prompt" className="font-semibold text-gray-900 text-base">
-                      AI Generation Prompt
-                    </Label>
-                    <Textarea
-                      id="prompt"
-                      placeholder="Click 'Generate AI Prompt' to create an intelligent prompt based on your selections, or write a custom prompt..."
-                      value={testData.prompt}
-                      onChange={(e) => setTestData((prev) => ({ ...prev, prompt: e.target.value }))}
-                      className="mt-3 min-h-[150px] text-base"
-                    />
-                  </div>
-                </CardContent>
-              </Card>
-
               {/* Continue Button */}
               <div className="flex justify-end">
                 <Button
                   onClick={() => setStep(2)}
                   size="lg"
                   className="bg-[#4D31EC] hover:bg-[#3D21DC] text-white font-semibold px-8"
-                  disabled={!testData.title || testData.selectedSkills.length === 0 || !testData.prompt}
+                  disabled={!testData.title || testData.selectedSkills.length === 0}
                 >
                   Continue to Configuration
                   <ArrowLeft className="w-4 h-4 ml-2 rotate-180" />
@@ -614,12 +593,6 @@ Please ensure questions are:
                 <Eye className="w-4 h-4 mr-2" />
                 Preview Test
               </Button>
-              <Link href="/create-test/questions">
-                <Button size="lg" className="bg-[#4D31EC] hover:bg-[#3D21DC] text-white font-semibold">
-                  <Wand2 className="w-4 h-4 mr-2" />
-                  Generate Questions
-                </Button>
-              </Link>
             </div>
           </div>
         </header>
@@ -912,54 +885,200 @@ Please ensure questions are:
                   </div>
                 </CardContent>
               </Card>
-            </div>
 
-            {/* Test Summary */}
-            <Card className="border-0 shadow-sm bg-gradient-to-r from-[#F8F8FF] to-white">
-              <CardContent className="p-8">
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-6 text-center">
-                  <div>
-                    <p className="text-3xl font-bold text-[#4D31EC]">
-                      {testData.mcqCount[0] +
-                        testData.subjectiveCount[0] +
-                        testData.codingCount[0] +
-                        testData.problemSolvingCount[0]}
-                    </p>
-                    <p className="text-sm text-gray-600 mt-1">Total Questions</p>
-                  </div>
-                  <div>
-                    <p className="text-3xl font-bold text-green-600">
-                      {testData.mcqCount[0] * testData.mcqMarks +
-                        testData.subjectiveCount[0] * testData.subjectiveMarks +
-                        testData.codingCount[0] * testData.codingMarks +
-                        testData.problemSolvingCount[0] * testData.problemSolvingMarks}
-                    </p>
-                    <p className="text-sm text-gray-600 mt-1">Total Marks</p>
-                  </div>
-                  <div>
-                    <p className="text-3xl font-bold text-blue-600">{testData.duration[0]}</p>
-                    <p className="text-sm text-gray-600 mt-1">Minutes</p>
-                  </div>
-                  <div>
-                    <p className="text-3xl font-bold text-purple-600">{testData.passingScore}%</p>
-                    <p className="text-sm text-gray-600 mt-1">Passing Score</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+              {/* Assessment Settings */}
+              <Card className="border-0 shadow-sm">
+                <CardHeader>
+                  <CardTitle className="font-bold flex items-center gap-3 text-xl">
+                    <div className="w-12 h-12 bg-red-100 rounded-xl flex items-center justify-center">
+                      <Eye className="w-6 h-6 text-red-600" />
+                    </div>
+                    Assessment Settings
+                  </CardTitle>
+                  <CardDescription className="text-base">
+                    Configure proctoring and security settings for the test
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <Label className="font-semibold text-gray-900 text-base">Webcam Monitoring</Label>
+                          <p className="text-sm text-gray-600">Require candidates to enable webcam during test</p>
+                        </div>
+                        <Switch
+                          checked={testData.webcamRequired}
+                          onCheckedChange={(checked) => setTestData((prev) => ({ ...prev, webcamRequired: checked }))}
+                        />
+                      </div>
 
-            {/* Generate Button */}
-            <div className="flex justify-end">
-              <Link href="/create-test/questions">
-                <Button
-                  size="lg"
-                  className="bg-[#4D31EC] hover:bg-[#3D21DC] text-white font-semibold px-8"
-                  disabled={!testData.title || !testData.prompt}
-                >
-                  <Wand2 className="w-4 h-4 mr-2" />
-                  Generate Test Questions
-                </Button>
-              </Link>
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <Label className="font-semibold text-gray-900 text-base">Full Screen Mode</Label>
+                          <p className="text-sm text-gray-600">Force full screen mode during test</p>
+                        </div>
+                        <Switch
+                          checked={testData.fullScreenRequired}
+                          onCheckedChange={(checked) =>
+                            setTestData((prev) => ({ ...prev, fullScreenRequired: checked }))
+                          }
+                        />
+                      </div>
+
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <Label className="font-semibold text-gray-900 text-base">Tab Switch Detection</Label>
+                          <p className="text-sm text-gray-600">Monitor and alert on tab switching</p>
+                        </div>
+                        <Switch
+                          checked={testData.tabSwitchDetection}
+                          onCheckedChange={(checked) =>
+                            setTestData((prev) => ({ ...prev, tabSwitchDetection: checked }))
+                          }
+                        />
+                      </div>
+                    </div>
+
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <Label className="font-semibold text-gray-900 text-base">Copy/Paste Prevention</Label>
+                          <p className="text-sm text-gray-600">Disable copy/paste functionality</p>
+                        </div>
+                        <Switch
+                          checked={testData.copyPasteDisabled}
+                          onCheckedChange={(checked) =>
+                            setTestData((prev) => ({ ...prev, copyPasteDisabled: checked }))
+                          }
+                        />
+                      </div>
+
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <Label className="font-semibold text-gray-900 text-base">Auto-Submit on Time</Label>
+                          <p className="text-sm text-gray-600">Automatically submit when time expires</p>
+                        </div>
+                        <Switch
+                          checked={testData.autoSubmit}
+                          onCheckedChange={(checked) => setTestData((prev) => ({ ...prev, autoSubmit: checked }))}
+                        />
+                      </div>
+
+                      <div>
+                        <Label className="font-semibold text-gray-900 text-base">Max Tab Switches Allowed</Label>
+                        <Input
+                          type="number"
+                          value={testData.maxTabSwitches}
+                          onChange={(e) =>
+                            setTestData((prev) => ({ ...prev, maxTabSwitches: Number.parseInt(e.target.value) || 3 }))
+                          }
+                          className="mt-2 h-10"
+                          min="0"
+                          max="10"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Test Summary */}
+              <Card className="border-0 shadow-sm bg-gradient-to-r from-[#F8F8FF] to-white">
+                <CardContent className="p-8">
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-6 text-center">
+                    <div>
+                      <p className="text-3xl font-bold text-[#4D31EC]">
+                        {testData.mcqCount[0] +
+                          testData.subjectiveCount[0] +
+                          testData.codingCount[0] +
+                          testData.problemSolvingCount[0]}
+                      </p>
+                      <p className="text-sm text-gray-600 mt-1">Total Questions</p>
+                    </div>
+                    <div>
+                      <p className="text-3xl font-bold text-green-600">
+                        {testData.mcqCount[0] * testData.mcqMarks +
+                          testData.subjectiveCount[0] * testData.subjectiveMarks +
+                          testData.codingCount[0] * testData.codingMarks +
+                          testData.problemSolvingCount[0] * testData.problemSolvingMarks}
+                      </p>
+                      <p className="text-sm text-gray-600 mt-1">Total Marks</p>
+                    </div>
+                    <div>
+                      <p className="text-3xl font-bold text-blue-600">{testData.duration[0]}</p>
+                      <p className="text-sm text-gray-600 mt-1">Minutes</p>
+                    </div>
+                    <div>
+                      <p className="text-3xl font-bold text-purple-600">{testData.passingScore}%</p>
+                      <p className="text-sm text-gray-600 mt-1">Passing Score</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* AI Prompt Generation */}
+              <Card className="border-0 shadow-sm">
+                <CardHeader>
+                  <CardTitle className="font-bold flex items-center gap-3 text-xl">
+                    <div className="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center">
+                      <Wand2 className="w-6 h-6 text-purple-600" />
+                    </div>
+                    AI Question Generation Prompt
+                  </CardTitle>
+                  <CardDescription className="text-base">
+                    Generate an intelligent prompt based on your test configuration for AI question creation
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  <div className="flex gap-3">
+                    <Button
+                      onClick={generatePrompt}
+                      className="bg-[#4D31EC] hover:bg-[#3D21DC] text-white font-semibold px-6"
+                      disabled={!testData.title || testData.selectedSkills.length === 0 || generatingPrompt}
+                    >
+                      {generatingPrompt ? (
+                        <>
+                          <div className="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full mr-2"></div>
+                          Generating...
+                        </>
+                      ) : (
+                        <>
+                          <Sparkles className="w-4 h-4 mr-2" />
+                          Generate AI Prompt
+                        </>
+                      )}
+                    </Button>
+                  </div>
+
+                  <div>
+                    <Label htmlFor="prompt" className="font-semibold text-gray-900 text-base">
+                      AI Generation Prompt
+                    </Label>
+                    <Textarea
+                      id="prompt"
+                      placeholder="Click 'Generate AI Prompt' to create an intelligent prompt based on your test configuration..."
+                      value={testData.prompt}
+                      onChange={(e) => setTestData((prev) => ({ ...prev, prompt: e.target.value }))}
+                      className="mt-3 min-h-[200px] text-base"
+                    />
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Generate Button */}
+              <div className="flex justify-end">
+                <Link href="/create-test/questions">
+                  <Button
+                    size="lg"
+                    className="bg-[#4D31EC] hover:bg-[#3D21DC] text-white font-semibold px-8"
+                    disabled={!testData.title || !testData.prompt}
+                  >
+                    <Wand2 className="w-4 h-4 mr-2" />
+                    Generate Test Questions
+                  </Button>
+                </Link>
+              </div>
             </div>
           </div>
         </div>
